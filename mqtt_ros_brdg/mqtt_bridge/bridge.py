@@ -30,7 +30,20 @@ class Bridge(Node):
         self.cmd_vel_publisher.publish(twist)
 
     def odom_callback(self, msg: Odom):
-        self.client.publish('odom', '{{"x": {}, "y": {}, "theta": {}}}'.format(msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.orientation.z))
+        odom = {
+            "position": {
+                "x": msg.pose.pose.position.x,
+                "y": msg.pose.pose.position.y
+            },
+            "orientation": {
+                "w": msg.pose.pose.orientation.w,
+                "x": msg.pose.pose.orientation.x,
+                "y": msg.pose.pose.orientation.y,
+                "z": msg.pose.pose.orientation.z
+            }
+        }
+
+        self.client.publish('odom', json.dumps(odom))
 
 def main(args=None):
     rclpy.init(args=args)
