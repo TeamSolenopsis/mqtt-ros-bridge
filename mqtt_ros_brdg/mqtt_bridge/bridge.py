@@ -13,11 +13,11 @@ class Bridge(Node):
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
 
-        self.client.connect('192.168.0.101', 1883, 60)
+        self.client.connect('192.168.75.26', 1883, 60)
         self.client.loop_start()
 
         self.cmd_vel_publisher = self.create_publisher(Twist, 'cmd_vel', 10)
-        self.odom_subscription = self.create_subscription(Odom, 'odom', self.odom_callback, 10)        
+        self.odom_subscription = self.create_subscription(Odom, 'odom', self.odom_callback, qos_profile=rclpy.qos.qos_profile_sensor_data)        
 
     def on_connect(self, client, userdata, flags, rc):
         self.client.subscribe('cmd_vel')
