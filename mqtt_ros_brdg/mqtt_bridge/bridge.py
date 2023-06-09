@@ -32,25 +32,20 @@ class Bridge(Node):
         self.cmd_vel_publisher = self.create_publisher(Twist, 'cmd_vel', 10)
         self.odom_subscription = self.create_subscription(Odom, 'odom', self.odom_callback, qos_profile=rclpy.qos.qos_profile_sensor_data)        
 
-        self.create_timer(0.5, self.mqtt_check_connection)
         self.create_timer(0.5, self.send_cmd_vel)
         self.current_cmd_vel = Twist()
-
-
-    def mqtt_check_connection(self):
-        print('checking connection')
-        print(self.client.is_connected())
-        if not self.client.is_connected():
-            print('reconnecting')
-            self.current_cmd_vel = Twist()
-            self.cmd_vel_publisher.publish(Twist())
-            self.client.reconnect()
 
     def send_cmd_vel(self):
         self.cmd_vel_publisher.publish(self.current_cmd_vel)
 
     def on_connect(self, client, userdata, flags, rc):
         self.client.subscribe(self.mqtt_cmd_vel_topic)
+
+    def on_disconnect(self, client, userdata, rc):
+        print('disconnected')
+        self.current_cmd_vel = Twist()
+        self.cmd_vel_publisher.publish(Twist())
+        self.client.reconnect()
 
     def on_message(self, client, userdata, msg):
         twist = Twist()
