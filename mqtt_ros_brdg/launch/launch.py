@@ -2,7 +2,7 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 import yaml
 
-with open('conf.yaml', 'r') as f:
+with open('src/mqtt-ros-bridge/conf.yaml', 'r') as f:
     config = yaml.safe_load(f.read())
 
 def generate_launch_description():
