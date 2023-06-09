@@ -4,6 +4,8 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry as Odom
 import json
+import os
+import subprocess
 
 class Bridge(Node):
     def __init__(self):
@@ -34,19 +36,25 @@ class Bridge(Node):
         self.odom_subscription = self.create_subscription(Odom, 'odom', self.odom_callback, qos_profile=rclpy.qos.qos_profile_sensor_data)        
 
         self.create_timer(0.5, self.send_cmd_vel)
+        self.create_timer(0.5, self.check_connection_mqtt)
         self.current_cmd_vel = Twist()
 
     def send_cmd_vel(self):
         self.cmd_vel_publisher.publish(self.current_cmd_vel)
+
+    def check_connection_mqtt(self):
+        if os.system(f'timeout 0.5 ping -c 1 {self.broker_ip}') != 0:
+            self.current_cmd_vel = Twist()
+            self.cmd_vel_publisher.publish(self.current_cmd_vel)
+            self.client.reconnect()
+        
 
     def on_connect(self, client, userdata, flags, rc):
         self.client.subscribe(self.mqtt_cmd_vel_topic)
 
     def on_disconnect(self, client, userdata, rc):
         print('disconnected')
-        self.current_cmd_vel = Twist()
-        self.cmd_vel_publisher.publish(Twist())
-        self.client.reconnect()
+   
 
     def on_message(self, client, userdata, msg):
         twist = Twist()
