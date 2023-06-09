@@ -46,7 +46,6 @@ class Bridge(Node):
         if os.system(f'timeout 0.5 ping -c 1 {self.broker_ip}') != 0:
             self.current_cmd_vel = Twist()
             self.cmd_vel_publisher.publish(self.current_cmd_vel)
-            self.client.reconnect()
         
 
     def on_connect(self, client, userdata, flags, rc):
