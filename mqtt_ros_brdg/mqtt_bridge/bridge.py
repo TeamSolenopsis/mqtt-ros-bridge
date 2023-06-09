@@ -25,6 +25,7 @@ class Bridge(Node):
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
+        self.client.on_disconnect = self.on_disconnect
 
         self.client.connect(self.broker_ip, 1883, 60)
         self.client.loop_start()
