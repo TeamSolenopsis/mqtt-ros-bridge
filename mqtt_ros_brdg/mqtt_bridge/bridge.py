@@ -9,18 +9,31 @@ class Bridge(Node):
     def __init__(self):
         super().__init__('bridge_node')
 
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+                ('broker_ip', rclpy.Parameter.Type.STRING),
+                ('mqtt_cmd_vel_topic', rclpy.Parameter.Type.STRING),
+                ('mqtt_odom_topic', rclpy.Parameter.Type.STRING)
+            ]
+        )
+
+        self.broker_ip = self.get_parameter('broker_ip').get_parameter_value().string_value
+        self.mqtt_cmd_vel_topic = self.get_parameter('mqtt_cmd_vel_topic').get_parameter_value().string_value
+        self.mqtt_odom_topic  = self.get_parameter('mqtt_odom_topic').get_parameter_value().string_value
+
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
 
-        self.client.connect('192.168.0.101', 1883, 60)
+        self.client.connect(self.broker_ip, 1883, 60)
         self.client.loop_start()
 
         self.cmd_vel_publisher = self.create_publisher(Twist, 'cmd_vel', 10)
-        self.odom_subscription = self.create_subscription(Odom, 'odom', self.odom_callback, 10)        
+        self.odom_subscription = self.create_subscription(Odom, 'odom', self.odom_callback, qos_profile=rclpy.qos.qos_profile_sensor_data)        
 
     def on_connect(self, client, userdata, flags, rc):
-        self.client.subscribe('cmd_vel')
+        self.client.subscribe(self.mqtt_cmd_vel_topic)
 
     def on_message(self, client, userdata, msg):
         twist = Twist()
@@ -43,7 +56,7 @@ class Bridge(Node):
             }
         }
 
-        self.client.publish('odom', json.dumps(odom))
+        self.client.publish(self.mqtt_odom_topic, json.dumps(odom))
 
 def main(args=None):
     rclpy.init(args=args)
