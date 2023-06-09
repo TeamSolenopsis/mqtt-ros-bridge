@@ -51,8 +51,8 @@ class Bridge(Node):
     def on_message(self, client, userdata, msg):
         twist = Twist()
         json_msg = json.loads(msg.payload.decode('utf-8'))
-        twist.linear.x = json_msg['linear']
-        twist.angular.z = json_msg['angular']
+        twist.linear.x = float(json_msg['linear'])
+        twist.angular.z = float(json_msg['angular'])
         self.current_cmd_vel = twist
         self.cmd_vel_publisher.publish(twist)
 
