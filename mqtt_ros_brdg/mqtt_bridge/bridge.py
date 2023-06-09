@@ -39,6 +39,7 @@ class Bridge(Node):
 
     def mqtt_check_connection(self):
         if not self.client.is_connected():
+            self.current_cmd_vel = Twist()
             self.cmd_vel_publisher.publish(Twist())
             self.client.reconnect()
 
