@@ -1,0 +1,3 @@
+broker_ip: '192.168.0.101'
+mqtt_cmd_vel_topic: 'cmd_vel'
+mqtt_odom_topic: 'odom'
