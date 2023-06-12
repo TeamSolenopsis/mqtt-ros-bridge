@@ -4,6 +4,8 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry as Odom
 import json
+import os
+import math
 
 class Bridge(Node):
     def __init__(self):
@@ -32,27 +34,46 @@ class Bridge(Node):
         self.cmd_vel_publisher = self.create_publisher(Twist, 'cmd_vel', 10)
         self.odom_subscription = self.create_subscription(Odom, 'odom', self.odom_callback, qos_profile=rclpy.qos.qos_profile_sensor_data)        
 
+        self.create_timer(0.5, self.check_connection_mqtt)
+        self.create_timer(0.5, self.send_cmd_vel)
+        self.current_cmd_vel = Twist()
+
+    def send_cmd_vel(self):
+        self.cmd_vel_publisher.publish(self.current_cmd_vel)
+
+    def check_connection_mqtt(self):
+        if os.system(f'timeout 0.5 ping -c 1 {self.broker_ip}') != 0:
+            self.current_cmd_vel = Twist()
+            self.cmd_vel_publisher.publish(self.current_cmd_vel)
+        
+
     def on_connect(self, client, userdata, flags, rc):
         self.client.subscribe(self.mqtt_cmd_vel_topic)
 
     def on_message(self, client, userdata, msg):
         twist = Twist()
         json_msg = json.loads(msg.payload.decode('utf-8'))
-        twist.linear.x = json_msg['linear']
-        twist.angular.z = json_msg['angular']
+        twist.linear.x = float(json_msg['linear'])
+        twist.angular.z = float(json_msg['angular'])
+        self.current_cmd_vel = twist
         self.cmd_vel_publisher.publish(twist)
 
     def odom_callback(self, msg: Odom):
+        pose_x = msg.pose.pose.position.x
+        pose_y = msg.pose.pose.position.y
+
+        w, x, y, z = msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z
+        siny_cosp = 2 * (w * z + x * y)
+        cosy_cosp = 1 - 2 * (y * y + z * z)
+        yaw = round(math.atan2(siny_cosp, cosy_cosp),2)
+
         odom = {
             "position": {
-                "x": msg.pose.pose.position.x,
-                "y": msg.pose.pose.position.y
+                "x": pose_x,
+                "y": pose_y
             },
             "orientation": {
-                "w": msg.pose.pose.orientation.w,
-                "x": msg.pose.pose.orientation.x,
-                "y": msg.pose.pose.orientation.y,
-                "z": msg.pose.pose.orientation.z
+                "w": yaw
             }
         }
 
