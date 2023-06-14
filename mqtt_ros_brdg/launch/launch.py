@@ -16,7 +16,9 @@ def generate_launch_description():
             parameters=[
                 {'broker_ip': config['broker_ip']},
                 {'mqtt_cmd_vel_topic': config['mqtt_cmd_vel_topic']},
-                {'mqtt_odom_topic': config['mqtt_odom_topic']}
+                {'mqtt_odom_topic': config['mqtt_odom_topic']},
+                {'ros_cmd_vel_topic': config['ros_cmd_vel_topic']},
+                {'ros_odom_topic': config['ros_odom_topic']}
             ]
         )
     ])

@@ -16,13 +16,17 @@ class Bridge(Node):
             parameters=[
                 ('broker_ip', rclpy.Parameter.Type.STRING),
                 ('mqtt_cmd_vel_topic', rclpy.Parameter.Type.STRING),
-                ('mqtt_odom_topic', rclpy.Parameter.Type.STRING)
+                ('mqtt_odom_topic', rclpy.Parameter.Type.STRING),
+                ('ros_cmd_vel_topic', rclpy.Parameter.Type.STRING),
+                ('ros_odom_topic', rclpy.Parameter.Type.STRING)
             ]
         )
 
         self.broker_ip = self.get_parameter('broker_ip').get_parameter_value().string_value
         self.mqtt_cmd_vel_topic = self.get_parameter('mqtt_cmd_vel_topic').get_parameter_value().string_value
         self.mqtt_odom_topic  = self.get_parameter('mqtt_odom_topic').get_parameter_value().string_value
+        self.ros_cmd_vel_topic = self.get_parameter('ros_cmd_vel_topic').get_parameter_value().string_value
+        self.ros_odom_topic = self.get_parameter('ros_odom_topic').get_parameter_value().string_value
 
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
@@ -31,8 +35,8 @@ class Bridge(Node):
         self.client.connect(self.broker_ip, 1883, 60)
         self.client.loop_start()
 
-        self.cmd_vel_publisher = self.create_publisher(Twist, 'cmd_vel', 10)
-        self.odom_subscription = self.create_subscription(Odom, 'odom', self.odom_callback, qos_profile=rclpy.qos.qos_profile_sensor_data)        
+        self.cmd_vel_publisher = self.create_publisher(Twist, self.ros_cmd_vel_topic, 10)
+        self.odom_subscription = self.create_subscription(Odom, self.ros_odom_topic, self.odom_callback, qos_profile=rclpy.qos.qos_profile_sensor_data)        
 
         self.create_timer(0.5, self.check_connection_mqtt)
         self.create_timer(0.5, self.send_cmd_vel)

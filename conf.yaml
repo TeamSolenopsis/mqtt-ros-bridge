@@ -1,3 +1,5 @@
 broker_ip: '192.168.75.201'
 mqtt_cmd_vel_topic: 'cmd_vel'
 mqtt_odom_topic: 'odom'
+ros_cmd_vel_topic: 'cmd_vel'
+ros_odom_topic: 'odom'
