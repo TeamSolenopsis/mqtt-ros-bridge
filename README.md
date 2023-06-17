@@ -1,2 +1,2 @@
-# TemplateRepo
-This is a template Repo
+# MQTT ROS bridge package
+This is packacge facilitates the mqtt -> ROS communication for turtlebot4's
