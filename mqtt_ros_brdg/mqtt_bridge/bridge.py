@@ -39,11 +39,7 @@ class Bridge(Node):
         self.odom_subscription = self.create_subscription(Odom, self.ros_odom_topic, self.odom_callback, qos_profile=rclpy.qos.qos_profile_sensor_data)        
 
         self.create_timer(0.5, self.check_connection_mqtt)
-        self.create_timer(0.5, self.send_cmd_vel)
-        self.current_cmd_vel = Twist()
 
-    def send_cmd_vel(self):
-        self.cmd_vel_publisher.publish(self.current_cmd_vel)
 
     def check_connection_mqtt(self):
         if os.system(f'timeout 0.5 ping -c 1 {self.broker_ip}') != 0:
@@ -59,7 +55,6 @@ class Bridge(Node):
         json_msg = json.loads(msg.payload.decode('utf-8'))
         twist.linear.x = float(json_msg['linear'])
         twist.angular.z = float(json_msg['angular'])
-        self.current_cmd_vel = twist
         self.cmd_vel_publisher.publish(twist)
 
     def odom_callback(self, msg: Odom):
