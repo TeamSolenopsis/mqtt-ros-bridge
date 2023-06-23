@@ -1,8 +1,11 @@
 import paho.mqtt.client as mqtt
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, PoseStamped
 from nav_msgs.msg import Odometry as Odom
+from rclpy.action import ActionClient
+from nav2_msgs.action import NavigateToPose
+from action_msgs.msg import GoalStatus
 import json
 import os
 import math
@@ -17,6 +20,8 @@ class Bridge(Node):
                 ('broker_ip', rclpy.Parameter.Type.STRING),
                 ('mqtt_cmd_vel_topic', rclpy.Parameter.Type.STRING),
                 ('mqtt_odom_topic', rclpy.Parameter.Type.STRING),
+                ('mqtt_assembler_pose_topic', rclpy.Parameter.Type.STRING),
+                ('mqtt_assembler_arrived_topic', rclpy.Parameter.Type.STRING),
                 ('ros_cmd_vel_topic', rclpy.Parameter.Type.STRING),
                 ('ros_odom_topic', rclpy.Parameter.Type.STRING)
             ]
@@ -25,6 +30,8 @@ class Bridge(Node):
         self.broker_ip = self.get_parameter('broker_ip').get_parameter_value().string_value
         self.mqtt_cmd_vel_topic = self.get_parameter('mqtt_cmd_vel_topic').get_parameter_value().string_value
         self.mqtt_odom_topic  = self.get_parameter('mqtt_odom_topic').get_parameter_value().string_value
+        self.mqtt_assembler_pose_topic  = self.get_parameter('mqtt_assembler_pose_topic').get_parameter_value().string_value
+        self.mqtt_assembler_arrived_topic = self.get_parameter('mqtt_assembler_arrived_topic').get_parameter_value().string_value
         self.ros_cmd_vel_topic = self.get_parameter('ros_cmd_vel_topic').get_parameter_value().string_value
         self.ros_odom_topic = self.get_parameter('ros_odom_topic').get_parameter_value().string_value
 
@@ -42,6 +49,8 @@ class Bridge(Node):
         self.create_timer(0.5, self.send_cmd_vel)
         self.current_cmd_vel = Twist()
 
+        self.action_navigate_pose_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+
     def send_cmd_vel(self):
         self.cmd_vel_publisher.publish(self.current_cmd_vel)
 
@@ -55,12 +64,15 @@ class Bridge(Node):
         self.client.subscribe(self.mqtt_cmd_vel_topic)
 
     def on_message(self, client, userdata, msg):
-        twist = Twist()
-        json_msg = json.loads(msg.payload.decode('utf-8'))
-        twist.linear.x = float(json_msg['linear'])
-        twist.angular.z = float(json_msg['angular'])
-        self.current_cmd_vel = twist
-        self.cmd_vel_publisher.publish(twist)
+        if msg.topic == self.mqtt_cmd_vel_topic:
+            twist = Twist()
+            json_msg = json.loads(msg.payload.decode('utf-8'))
+            twist.linear.x = float(json_msg['linear'])
+            twist.angular.z = float(json_msg['angular'])
+            self.current_cmd_vel = twist
+            self.cmd_vel_publisher.publish(twist)
+        elif msg.topic == self.mqtt_assembler_pose_topic:
+            self.pose_topic_callback(msg) 
 
     def odom_callback(self, msg: Odom):
         pose_x = msg.pose.pose.position.x
@@ -83,6 +95,46 @@ class Bridge(Node):
 
         self.client.publish(self.mqtt_odom_topic, json.dumps(odom))
 
+    def pose_topic_callback(self, msg):
+        goal_pose = PoseStamped()
+        json_msg = json.loads(msg.payload.decode('utf-8'))
+        goal_pose.pose.position.x = float(json_msg['position']['x'])
+        goal_pose.pose.position.y = float(json_msg['position']['y'])
+        goal_pose.pose.orientation.w = float(json_msg['orientation']['w'])
+
+        goal_msg = NavigateToPose.Goal()
+        goal_msg.goal = goal_pose
+
+        self.action_navigate_pose_client.wait_for_server()
+        send_goal_future = self.action_client.send_goal_async(goal_msg)
+
+        # Handle the response
+        send_goal_future.add_done_callback(self.goal_response_callback)
+
+    def goal_response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().info('Goal rejected')
+            return
+
+        self.get_logger().info('Goal accepted')
+
+        # Create a callback to handle the result
+        goal_handle.add_done_callback(self.result_callback)
+
+    def result_callback(self, future):
+        goal_handle = future.result()
+        status = goal_handle.status
+        result = goal_handle.result
+
+        if status == GoalStatus.STATUS_SUCCEEDED:
+            self.get_logger().info('Goal succeeded')
+            # Process the result here if needed
+            self.client.publish(self.mqtt_assembler_arrived_topic, json.dumps("arrived"))
+        else:
+            self.get_logger().info('Goal failed')
+            # Handle the failure case here
+ 
 def main(args=None):
     rclpy.init(args=args)
     bridge = Bridge()
